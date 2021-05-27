@@ -1,21 +1,22 @@
 use csv::ReaderBuilder;
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
+use std::string::String;
 use std::{fs, io};
 
 fn main() {
     // get file names
     let mut paths: Vec<PathBuf> = Vec::new();
     let _f = get_files(&mut paths);
-
     for i in paths {
-        // println!("{:?}", i.into_os_string().into_string().as_str());
-        csv_process(i.into_os_string().into_string().unwrap().as_str());
+        let mut tophash: HashMap<String, u128> = HashMap::new();
+        let mut toplist = process(
+            i.into_os_string().into_string().unwrap().as_str(),
+            &mut tophash,
+        );
+        println!("top:{:?}", toplist);
     }
-    // if let Err(err) = example() {
-    //     println!("error running example: {}", err);
-    //     process::exit(1);
-    // }
 }
 
 fn check_path(p: PathBuf) -> bool {
@@ -44,12 +45,19 @@ fn get_files(v: &mut Vec<PathBuf>) -> io::Result<()> {
     Ok(())
 }
 
-fn csv_process(s: &str) -> Result<(), Box<dyn Error>> {
+fn process(
+    s: &str,
+    map: &mut HashMap<String, u128>,
+) -> Result<Vec<(String, u128)>, Box<dyn Error>> {
     let mut rdr = ReaderBuilder::new().delimiter(b'|').from_path(s)?;
-
     for result in rdr.records() {
         let record = result?;
-        println!("{:?}", record.get(4));
+        let number = String::from(record.get(4).unwrap());
+        let count = map.entry(number).or_insert(0);
+        *count += 1;
     }
-    Ok(())
+    let mut v: Vec<_> = map.iter().collect();
+    v.sort_by(|a, b| b.1.cmp(a.1));
+    v.truncate(50);
+    Ok(v)
 }
